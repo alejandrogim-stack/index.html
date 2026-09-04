@@ -17,6 +17,9 @@
     --amber: #f2a33d;
     --red: #e05a5a;
     --green: #4cbf7a;
+    --price-gold: #D4AF37;
+    --price-navy: #2C4A7C;
+    --price-green: #3FA34D;
     --font-display: 'Barlow Condensed', sans-serif;
     --font-body: 'Inter', sans-serif;
   }
@@ -105,7 +108,7 @@
     background:var(--bg-panel-2);border:1px solid var(--line);color:var(--text);border-radius:6px;
     padding:8px 12px;cursor:pointer;font-size:14px;
   }
-  .price-pick button.selected{border-color:var(--blue);background:rgba(46,168,230,0.15);color:var(--blue);}
+  .price-pick button.selected{border-color:var(--blue);background:rgba(46,168,230,0.15);}
 
   .search-results{max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:6px;margin-top:6px;}
   .search-row{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;}
@@ -124,6 +127,12 @@
   .flag{font-size:12px;color:var(--text-dim);}
   .divider{height:1px;background:var(--line);margin:18px 0;}
   .receipt{font-family:monospace;font-size:13px;white-space:pre-wrap;background:var(--bg-panel-2);padding:16px;border-radius:6px;border:1px solid var(--line);}
+  .price-70{color:var(--price-gold);font-weight:600;}
+  .price-85{color:var(--price-navy);font-weight:600;}
+  .price-100{color:var(--price-green);font-weight:600;}
+  th.price-70{color:var(--price-gold);}
+  th.price-85{color:var(--price-navy);}
+  th.price-100{color:var(--price-green);}
 </style>
 </head>
 <body>
@@ -235,6 +244,15 @@ async function upsertContador(tienda, valor){
 function saveStoreSelection(){ try{ localStorage.setItem('tienda-actual', currentStore); }catch(e){} }
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function calcularPrecios(costo){
+  costo = parseFloat(costo)||0;
+  return {
+    precio1: costo,
+    precio2: Math.ceil(costo * 1.70),
+    precio3: Math.ceil(costo * 1.85),
+    precio4: Math.ceil(costo * 2.00)
+  };
+}
 function fmtMoney(n){ return '$' + Number(n||0).toFixed(2); }
 function fmtDate(d){ const dt = new Date(d); return dt.toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short'}); }
 
@@ -342,11 +360,12 @@ function renderInventario(){
           <div><label>Nombre del producto</label><input id="npNombre" placeholder="Nombre"></div>
           <div><label>Proveedor</label><input id="npProveedor" placeholder="Proveedor"></div>
         </div>
-        <div class="row cols-4">
-          <div><label>Precio 1</label><input id="npP1" type="number" step="0.01"></div>
-          <div><label>Precio 2</label><input id="npP2" type="number" step="0.01"></div>
-          <div><label>Precio 3</label><input id="npP3" type="number" step="0.01"></div>
-          <div><label>Precio 4</label><input id="npP4" type="number" step="0.01"></div>
+        <div class="row cols-2">
+          <div><label>Costo (Precio 1)</label><input id="npP1" type="number" step="0.01" oninput="previewPreciosNuevo()"></div>
+          <div>
+            <label>Precios de venta calculados</label>
+            <div id="npPreciosPreview" class="flag">Escribe el costo para ver los 3 precios de venta</div>
+          </div>
         </div>
         <div class="divider"></div>
       </div>
@@ -360,9 +379,10 @@ function renderInventario(){
     <div class="panel">
       <h2>Importar productos en masa</h2>
       <div class="sub">Pega una lista con una fila por producto. Columnas separadas por tabulación (como al copiar de Excel/Sheets) o por coma, en este orden:</div>
-      <div class="flag" style="margin-bottom:10px;">ID de producto (déjalo vacío para crear uno nuevo automáticamente) — Nombre — Proveedor — Precio 1 — Precio 2 — Precio 3 — Precio 4 — Stock Tienda 40 — Stock Tienda 46</div>
-      <textarea id="importText" rows="6" placeholder="Bomba de agua&#9;Marca X&#9;12.50&#9;13.00&#9;14.50&#9;15.00&#9;10&#9;4
-Radiador aluminio&#9;Marca Y&#9;80&#9;85&#9;90&#9;95&#9;3&#9;2"></textarea>
+      <div class="flag" style="margin-bottom:10px;">ID de producto (déjalo vacío para crear uno nuevo automáticamente) — Nombre — Proveedor — Costo (Precio 1) — Stock Tienda 40 — Stock Tienda 46</div>
+      <div class="flag" style="margin-bottom:10px;">Los precios de venta (70%, 85% y 100% sobre el costo) se calculan solos — no hace falta escribirlos.</div>
+      <textarea id="importText" rows="6" placeholder="Bomba de agua&#9;Marca X&#9;12.50&#9;10&#9;4
+Radiador aluminio&#9;Marca Y&#9;80&#9;3&#9;2"></textarea>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-primary" onclick="previsualizarImportacion()">Previsualizar</button>
         <span class="flag">Si el ID coincide con uno existente, se actualiza ese producto; si no, se crea nuevo.</span>
@@ -374,13 +394,13 @@ Radiador aluminio&#9;Marca Y&#9;80&#9;85&#9;90&#9;95&#9;3&#9;2"></textarea>
 function parseImportLine(line){
   const sep = line.includes('\t') ? '\t' : ',';
   const parts = line.split(sep).map(s=>s.trim());
-  // Acepta 9 columnas (con ID, vacío si es producto nuevo) u 8 columnas (sin ID, siempre nuevo)
-  let id, nombre, proveedor, precio1, precio2, precio3, precio4, stock40, stock46;
-  if(parts.length >= 9){
-    [id, nombre, proveedor, precio1, precio2, precio3, precio4, stock40, stock46] = parts;
-  } else if(parts.length === 8){
+  // Acepta 6 columnas (con ID, vacío si es producto nuevo) o 5 columnas (sin ID, siempre nuevo)
+  let id, nombre, proveedor, costo, stock40, stock46;
+  if(parts.length >= 6){
+    [id, nombre, proveedor, costo, stock40, stock46] = parts;
+  } else if(parts.length === 5){
     id = '';
-    [nombre, proveedor, precio1, precio2, precio3, precio4, stock40, stock46] = parts;
+    [nombre, proveedor, costo, stock40, stock46] = parts;
   } else {
     return null;
   }
@@ -388,8 +408,7 @@ function parseImportLine(line){
     id: id || null,
     nombre: nombre || '',
     proveedor: proveedor || '',
-    precio1: parseFloat(precio1)||0, precio2: parseFloat(precio2)||0,
-    precio3: parseFloat(precio3)||0, precio4: parseFloat(precio4)||0,
+    ...calcularPrecios(costo),
     stock40: parseInt(stock40)||0, stock46: parseInt(stock46)||0
   };
 }
@@ -410,14 +429,17 @@ function previsualizarImportacion(){
     <div class="divider"></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Acción</th><th>ID</th><th>Nombre</th><th>Proveedor</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>Stock 40</th><th>Stock 46</th></tr></thead>
+        <thead><tr><th>Acción</th><th>ID</th><th>Nombre</th><th>Proveedor</th><th>Costo</th><th class="price-70">70%</th><th class="price-85">85%</th><th class="price-100">100%</th><th>Stock 40</th><th>Stock 46</th></tr></thead>
         <tbody>
           ${importPendiente.map(x=>`
             <tr>
               <td><span class="badge ${x.accion==='crear'?'badge-green':'badge-amber'}">${x.accion}</span></td>
               <td>${x.row.id || '<span class="flag">se asigna</span>'}</td>
               <td>${x.row.nombre}</td><td>${x.row.proveedor||'—'}</td>
-              <td>${fmtMoney(x.row.precio1)}</td><td>${fmtMoney(x.row.precio2)}</td><td>${fmtMoney(x.row.precio3)}</td><td>${fmtMoney(x.row.precio4)}</td>
+              <td>${fmtMoney(x.row.precio1)}</td>
+              <td class="price-70">${fmtMoney(x.row.precio2)}</td>
+              <td class="price-85">${fmtMoney(x.row.precio3)}</td>
+              <td class="price-100">${fmtMoney(x.row.precio4)}</td>
               <td>${x.row.stock40}</td><td>${x.row.stock46}</td>
             </tr>
           `).join('')}
@@ -452,12 +474,15 @@ function renderInvTable(list){
   if(!list.length) return '<div class="empty">No hay productos registrados todavía.</div>';
   return `
     <table>
-      <thead><tr><th>ID</th><th>Nombre</th><th>Proveedor</th><th>Precio 1</th><th>Precio 2</th><th>Precio 3</th><th>Precio 4</th><th>Stock 40</th><th>Stock 46</th></tr></thead>
+      <thead><tr><th>ID</th><th>Nombre</th><th>Proveedor</th><th>Costo</th><th class="price-70">70%</th><th class="price-85">85%</th><th class="price-100">100%</th><th>Stock 40</th><th>Stock 46</th></tr></thead>
       <tbody>
         ${list.map(p=>`
           <tr>
             <td>${p.id}</td><td>${p.nombre}</td><td>${p.proveedor||'—'}</td>
-            <td>${fmtMoney(p.precio1)}</td><td>${fmtMoney(p.precio2)}</td><td>${fmtMoney(p.precio3)}</td><td>${fmtMoney(p.precio4)}</td>
+            <td>${fmtMoney(p.precio1)}</td>
+            <td class="price-70">${fmtMoney(p.precio2)}</td>
+            <td class="price-85">${fmtMoney(p.precio3)}</td>
+            <td class="price-100">${fmtMoney(p.precio4)}</td>
             <td><span class="badge ${p.stock40<=2?'badge-red':'badge-green'}">${p.stock40||0}</span></td>
             <td><span class="badge ${p.stock46<=2?'badge-red':'badge-green'}">${p.stock46||0}</span></td>
           </tr>
@@ -470,6 +495,13 @@ function renderInvResults(){
   const q = document.getElementById('invSearch').value.trim().toLowerCase();
   const filtered = !q ? productos : productos.filter(p => p.nombre.toLowerCase().includes(q) || p.id.toLowerCase().includes(q));
   document.getElementById('invResults').innerHTML = renderInvTable(filtered);
+}
+function previewPreciosNuevo(){
+  const costo = document.getElementById('npP1').value;
+  const box = document.getElementById('npPreciosPreview');
+  if(!costo){ box.innerHTML = 'Escribe el costo para ver los 3 precios de venta'; return; }
+  const pr = calcularPrecios(costo);
+  box.innerHTML = `<span class="price-70">${fmtMoney(pr.precio2)}</span> · <span class="price-85">${fmtMoney(pr.precio3)}</span> · <span class="price-100">${fmtMoney(pr.precio4)}</span>`;
 }
 async function registrarIngreso(){
   const sel = document.getElementById('ingProducto').value;
@@ -487,10 +519,7 @@ async function registrarIngreso(){
       id: 'P-' + uid().toUpperCase(),
       nombre,
       proveedor: document.getElementById('npProveedor').value.trim(),
-      precio1: parseFloat(document.getElementById('npP1').value)||0,
-      precio2: parseFloat(document.getElementById('npP2').value)||0,
-      precio3: parseFloat(document.getElementById('npP3').value)||0,
-      precio4: parseFloat(document.getElementById('npP4').value)||0,
+      ...calcularPrecios(document.getElementById('npP1').value),
       stock40: 0, stock46: 0
     };
     productos.push(producto);
@@ -644,13 +673,14 @@ function seleccionarProductoVenta(id){
   document.getElementById('ventaSearchResults').style.display='none';
   const p = productoSeleccionado;
   const precios = [
-    {label:'Precio 1', val:p.precio1}, {label:'Precio 2', val:p.precio2}, {label:'Precio 3', val:p.precio3}
+    {label:'70%', val:p.precio2, cls:'price-70'}, {label:'85%', val:p.precio3, cls:'price-85'}, {label:'100%', val:p.precio4, cls:'price-100'}
   ].sort((a,b)=>b.val-a.val);
   document.getElementById('ventaSeleccion').innerHTML = `
     <div class="divider"></div>
+    <div class="flag">Costo: ${fmtMoney(p.precio1)}</div>
     <label>Precio</label>
     <div class="price-pick" id="pricePick">
-      ${precios.map((pr,i)=>`<button type="button" data-val="${pr.val}" onclick="pickPrice(this,${pr.val})">${fmtMoney(pr.val)}</button>`).join('')}
+      ${precios.map((pr,i)=>`<button type="button" class="${pr.cls}" data-val="${pr.val}" onclick="pickPrice(this,${pr.val})">${fmtMoney(pr.val)}</button>`).join('')}
       <input id="precioManual" type="number" step="0.01" placeholder="Valor manual" style="width:130px;" oninput="pickPriceManual(this.value)">
     </div>
     <div class="row cols-2" style="margin-top:12px;">
