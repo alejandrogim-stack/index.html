@@ -154,11 +154,11 @@
    Los encuentras en: Project Settings → API → Project URL / anon public key */
 const SUPABASE_URL = 'https://wwuvypnrhjemkzwoxhuj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3dXZ5cG5yaGplbWt6d294aHVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzODY2MjIsImV4cCI6MjEwMzk2MjYyMn0.5T4JGawhbebKXZZBe2EpDLB_iT2tKz728W9toMf4uiU';
-let supabase = null;
+let sb = null;
 let errorInicioSupabase = null;
 try{
   if(!window.supabase) throw new Error('La librería de Supabase no cargó (window.supabase es undefined). Revisa tu conexión a internet o si un bloqueador de anuncios está bloqueando cdn.jsdelivr.net.');
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }catch(e){
   errorInicioSupabase = e.message || String(e);
   console.error('Error creando cliente de Supabase:', e);
@@ -174,22 +174,22 @@ let cart = []; // {productoId,nombre,cantidad,precioUnitario,observacion}
 
 async function loadAll(){
   try{
-    const {data, error} = await supabase.from('productos').select('*');
+    const {data, error} = await sb.from('productos').select('*');
     if(error) throw error;
     productos = data || [];
   }catch(e){ console.error('Error cargando productos:', e); productos = []; }
   try{
-    const {data, error} = await supabase.from('traslados').select('*').order('fecha', {ascending:true});
+    const {data, error} = await sb.from('traslados').select('*').order('fecha', {ascending:true});
     if(error) throw error;
     traslados = data || [];
   }catch(e){ console.error('Error cargando traslados:', e); traslados = []; }
   try{
-    const {data, error} = await supabase.from('ventas').select('*').order('fecha', {ascending:true});
+    const {data, error} = await sb.from('ventas').select('*').order('fecha', {ascending:true});
     if(error) throw error;
     ventas = data || [];
   }catch(e){ console.error('Error cargando ventas:', e); ventas = []; }
   try{
-    const {data, error} = await supabase.from('contadores').select('*');
+    const {data, error} = await sb.from('contadores').select('*');
     if(error) throw error;
     contadores = {40:0, 46:0};
     (data||[]).forEach(r => { contadores[r.tienda] = r.valor; });
@@ -208,28 +208,28 @@ async function actualizarDatos(){
 
 /* Funciones de guardado: cada una escribe solo lo que cambió */
 async function upsertProducto(p){
-  const {error} = await supabase.from('productos').upsert(p);
+  const {error} = await sb.from('productos').upsert(p);
   if(error){ console.error(error); toast('No se pudo guardar el producto en la base de datos.', true); }
 }
 async function upsertProductos(list){
   if(!list.length) return;
-  const {error} = await supabase.from('productos').upsert(list);
+  const {error} = await sb.from('productos').upsert(list);
   if(error){ console.error(error); toast('No se pudieron guardar algunos productos.', true); }
 }
 async function insertTraslado(t){
-  const {error} = await supabase.from('traslados').insert(t);
+  const {error} = await sb.from('traslados').insert(t);
   if(error){ console.error(error); toast('No se pudo guardar el traslado en la base de datos.', true); }
 }
 async function insertVenta(v){
-  const {error} = await supabase.from('ventas').insert(v);
+  const {error} = await sb.from('ventas').insert(v);
   if(error){ console.error(error); toast('No se pudo guardar la venta en la base de datos.', true); }
 }
 async function updateVentaEstado(id, estado){
-  const {error} = await supabase.from('ventas').update({estado}).eq('id', id);
+  const {error} = await sb.from('ventas').update({estado}).eq('id', id);
   if(error){ console.error(error); toast('No se pudo actualizar el estado de la venta.', true); }
 }
 async function upsertContador(tienda, valor){
-  const {error} = await supabase.from('contadores').upsert({tienda, valor});
+  const {error} = await sb.from('contadores').upsert({tienda, valor});
   if(error){ console.error(error); }
 }
 function saveStoreSelection(){ try{ localStorage.setItem('tienda-actual', currentStore); }catch(e){} }
@@ -729,7 +729,7 @@ async function cerrarVenta(){
   // para evitar que dos tiendas usen el mismo número si venden casi al mismo tiempo.
   let numeroActual = 0;
   try{
-    const {data} = await supabase.from('contadores').select('valor').eq('tienda', currentStore).maybeSingle();
+    const {data} = await sb.from('contadores').select('valor').eq('tienda', currentStore).maybeSingle();
     numeroActual = data ? data.valor : (contadores[currentStore]||0);
   }catch(e){ numeroActual = contadores[currentStore]||0; }
   contadores[currentStore] = numeroActual + 1;
@@ -920,7 +920,7 @@ window.addEventListener('unhandledrejection', (e) => {
 
 (async function init(){
   try{
-    if(!supabase){
+    if(!sb){
       mostrarErrorFatal(errorInicioSupabase || 'No se pudo conectar con Supabase.');
       return;
     }
