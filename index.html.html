@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Repuestos — Tiendas 40 / 46</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg: #12181f;
+    --bg-panel: #1a222c;
+    --bg-panel-2: #212b37;
+    --line: #2c3947;
+    --text: #e7edf3;
+    --text-dim: #93a3b3;
+    --blue: #2ea8e6;
+    --amber: #f2a33d;
+    --red: #e05a5a;
+    --green: #4cbf7a;
+    --font-display: 'Barlow Condensed', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--font-body);}
+  h1,h2,h3,h4,.gauge-label,.tab-btn,.brand{font-family:var(--font-display);}
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  .app{max-width:1100px;margin:0 auto;padding:0 16px 60px;}
+
+  header.top{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 0 14px;border-bottom:2px solid var(--line);margin-bottom:18px;
+    gap:12px;flex-wrap:wrap;
+  }
+  .brand{font-size:26px;font-weight:700;letter-spacing:0.3px;display:flex;align-items:baseline;gap:8px;}
+  .brand span.accent{color:var(--amber);}
+  .store-switch{display:flex;background:var(--bg-panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .store-switch button{
+    font-family:var(--font-display);font-size:18px;font-weight:600;
+    background:transparent;border:none;color:var(--text-dim);padding:8px 18px;cursor:pointer;
+  }
+  .store-switch button.active{background:var(--blue);color:#08131c;}
+
+  nav.tabs{display:flex;gap:4px;margin-bottom:22px;border-bottom:1px solid var(--line);overflow-x:auto;}
+  .tab-btn{
+    background:transparent;border:none;color:var(--text-dim);font-size:17px;font-weight:600;
+    padding:10px 16px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;
+  }
+  .tab-btn.active{color:var(--text);border-bottom-color:var(--amber);}
+
+  .panel{background:var(--bg-panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;}
+  .panel h2{margin:0 0 4px;font-size:24px;font-weight:600;}
+  .panel .sub{color:var(--text-dim);font-size:14px;margin-bottom:16px;}
+
+  label{display:block;font-size:13px;color:var(--text-dim);margin-bottom:4px;margin-top:12px;}
+  input,select,textarea{
+    width:100%;background:var(--bg-panel-2);border:1px solid var(--line);color:var(--text);
+    padding:10px 12px;border-radius:6px;font-size:15px;font-family:var(--font-body);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:1px;}
+
+  .row{display:grid;gap:12px;}
+  .row.cols-2{grid-template-columns:1fr 1fr;}
+  .row.cols-3{grid-template-columns:1fr 1fr 1fr;}
+  .row.cols-4{grid-template-columns:1fr 1fr 1fr 1fr;}
+  @media (max-width:640px){
+    .row.cols-2,.row.cols-3,.row.cols-4{grid-template-columns:1fr;}
+  }
+
+  .btn{
+    font-family:var(--font-display);font-size:17px;font-weight:600;letter-spacing:0.2px;
+    border:none;border-radius:6px;padding:11px 20px;cursor:pointer;margin-top:16px;
+  }
+  .btn-primary{background:var(--amber);color:#241505;}
+  .btn-secondary{background:transparent;border:1px solid var(--line);color:var(--text);}
+  .btn-danger{background:var(--red);color:#2a0808;}
+  .btn-sm{padding:6px 12px;font-size:14px;margin-top:0;}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th{text-align:left;color:var(--text-dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;
+     padding:8px 10px;border-bottom:1px solid var(--line);}
+  td{padding:10px 10px;border-bottom:1px solid var(--line);}
+  tr:last-child td{border-bottom:none;}
+  .table-wrap{overflow-x:auto;}
+
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600;}
+  .badge-green{background:rgba(76,191,122,0.15);color:var(--green);}
+  .badge-red{background:rgba(224,90,90,0.15);color:var(--red);}
+  .badge-amber{background:rgba(242,163,61,0.15);color:var(--amber);}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+  @media (max-width:640px){.stat-grid{grid-template-columns:1fr;}}
+  .stat{background:var(--bg-panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;}
+  .stat .num{font-family:var(--font-display);font-size:32px;font-weight:700;line-height:1;}
+  .stat .lbl{color:var(--text-dim);font-size:13px;margin-top:4px;}
+
+  .cart-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);gap:10px;}
+  .cart-item .name{flex:1;}
+  .cart-item .qty-price{color:var(--text-dim);font-size:13px;}
+  .cart-total{display:flex;justify-content:space-between;font-family:var(--font-display);font-size:22px;font-weight:700;padding-top:14px;}
+
+  .price-pick{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  .price-pick button{
+    background:var(--bg-panel-2);border:1px solid var(--line);color:var(--text);border-radius:6px;
+    padding:8px 12px;cursor:pointer;font-size:14px;
+  }
+  .price-pick button.selected{border-color:var(--blue);background:rgba(46,168,230,0.15);color:var(--blue);}
+
+  .search-results{max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:6px;margin-top:6px;}
+  .search-row{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;}
+  .search-row:hover{background:var(--bg-panel-2);}
+  .search-row:last-child{border-bottom:none;}
+
+  .empty{color:var(--text-dim);font-size:14px;padding:20px 0;text-align:center;}
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:var(--green);color:#07230f;padding:12px 22px;border-radius:8px;font-weight:600;
+    box-shadow:0 6px 20px rgba(0,0,0,0.3);z-index:100;font-family:var(--font-body);
+  }
+  .toast.err{background:var(--red);color:#2a0808;}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:90;padding:16px;}
+  .modal{background:var(--bg-panel);border:1px solid var(--line);border-radius:10px;padding:22px;max-width:420px;width:100%;}
+  .flag{font-size:12px;color:var(--text-dim);}
+  .divider{height:1px;background:var(--line);margin:18px 0;}
+  .receipt{font-family:monospace;font-size:13px;white-space:pre-wrap;background:var(--bg-panel-2);padding:16px;border-radius:6px;border:1px solid var(--line);}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">Repuestos<span class="accent">•</span>Enfriamiento</div>
+    <div class="store-switch">
+      <button id="btnStore40" onclick="setStore('40')">Tienda 40</button>
+      <button id="btnStore46" onclick="setStore('46')">Tienda 46</button>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="actualizarDatos()" style="margin-top:0;">↻ Actualizar datos</button>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn" data-tab="inicio" onclick="showTab('inicio')">Inicio</button>
+    <button class="tab-btn" data-tab="inventario" onclick="showTab('inventario')">Inventario</button>
+    <button class="tab-btn" data-tab="traslados" onclick="showTab('traslados')">Traslados</button>
+    <button class="tab-btn" data-tab="ventas" onclick="showTab('ventas')">Ventas</button>
+    <button class="tab-btn" data-tab="reportes" onclick="showTab('reportes')">Reportes</button>
+  </nav>
+
+  <div id="content"></div>
+</div>
+
+<script>
+/* ============ CONEXIÓN A SUPABASE ============ */
+/* Reemplaza estos dos valores por los de tu propio proyecto de Supabase.
+   Los encuentras en: Project Settings → API → Project URL / anon public key */
+const SUPABASE_URL = 'https://wwuvypnrhjemkzwoxhuj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3dXZ5cG5yaGplbWt6d294aHVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzODY2MjIsImV4cCI6MjEwMzk2MjYyMn0.5T4JGawhbebKXZZBe2EpDLB_iT2tKz728W9toMf4uiU';
+let supabase = null;
+let errorInicioSupabase = null;
+try{
+  if(!window.supabase) throw new Error('La librería de Supabase no cargó (window.supabase es undefined). Revisa tu conexión a internet o si un bloqueador de anuncios está bloqueando cdn.jsdelivr.net.');
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}catch(e){
+  errorInicioSupabase = e.message || String(e);
+  console.error('Error creando cliente de Supabase:', e);
+}
+
+/* ============ ESTADO ============ */
+let currentStore = '40';
+let productos = [];      // {id,nombre,proveedor,precio1..4,stock40,stock46}
+let traslados = [];      // {id,fecha,productoId,nombre,usuario,cantidad,origen,destino}
+let ventas = [];         // {id,tienda,numero,fecha,vendedor,metodoPago,cedulaCliente,items[],total,estado,tipo}
+let contadores = {40:0, 46:0};
+let cart = []; // {productoId,nombre,cantidad,precioUnitario,observacion}
+
+async function loadAll(){
+  try{
+    const {data, error} = await supabase.from('productos').select('*');
+    if(error) throw error;
+    productos = data || [];
+  }catch(e){ console.error('Error cargando productos:', e); productos = []; }
+  try{
+    const {data, error} = await supabase.from('traslados').select('*').order('fecha', {ascending:true});
+    if(error) throw error;
+    traslados = data || [];
+  }catch(e){ console.error('Error cargando traslados:', e); traslados = []; }
+  try{
+    const {data, error} = await supabase.from('ventas').select('*').order('fecha', {ascending:true});
+    if(error) throw error;
+    ventas = data || [];
+  }catch(e){ console.error('Error cargando ventas:', e); ventas = []; }
+  try{
+    const {data, error} = await supabase.from('contadores').select('*');
+    if(error) throw error;
+    contadores = {40:0, 46:0};
+    (data||[]).forEach(r => { contadores[r.tienda] = r.valor; });
+  }catch(e){ console.error('Error cargando contadores:', e); contadores = {40:0,46:0}; }
+  try{
+    const s = localStorage.getItem('tienda-actual');
+    if(s) currentStore = s;
+  }catch(e){}
+}
+async function actualizarDatos(){
+  await loadAll();
+  updateStoreButtons();
+  render();
+  toast('Datos actualizados desde la base de datos.');
+}
+
+/* Funciones de guardado: cada una escribe solo lo que cambió */
+async function upsertProducto(p){
+  const {error} = await supabase.from('productos').upsert(p);
+  if(error){ console.error(error); toast('No se pudo guardar el producto en la base de datos.', true); }
+}
+async function upsertProductos(list){
+  if(!list.length) return;
+  const {error} = await supabase.from('productos').upsert(list);
+  if(error){ console.error(error); toast('No se pudieron guardar algunos productos.', true); }
+}
+async function insertTraslado(t){
+  const {error} = await supabase.from('traslados').insert(t);
+  if(error){ console.error(error); toast('No se pudo guardar el traslado en la base de datos.', true); }
+}
+async function insertVenta(v){
+  const {error} = await supabase.from('ventas').insert(v);
+  if(error){ console.error(error); toast('No se pudo guardar la venta en la base de datos.', true); }
+}
+async function updateVentaEstado(id, estado){
+  const {error} = await supabase.from('ventas').update({estado}).eq('id', id);
+  if(error){ console.error(error); toast('No se pudo actualizar el estado de la venta.', true); }
+}
+async function upsertContador(tienda, valor){
+  const {error} = await supabase.from('contadores').upsert({tienda, valor});
+  if(error){ console.error(error); }
+}
+function saveStoreSelection(){ try{ localStorage.setItem('tienda-actual', currentStore); }catch(e){} }
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmtMoney(n){ return '$' + Number(n||0).toFixed(2); }
+function fmtDate(d){ const dt = new Date(d); return dt.toLocaleString('es-VE',{dateStyle:'short',timeStyle:'short'}); }
+
+function toast(msg, isErr){
+  const el = document.createElement('div');
+  el.className = 'toast' + (isErr ? ' err' : '');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 2600);
+}
+
+/* ============ NAVEGACIÓN ============ */
+let activeTab = 'inicio';
+function showTab(tab){
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  render();
+}
+function setStore(s){
+  currentStore = s;
+  saveStoreSelection();
+  updateStoreButtons();
+  render();
+}
+function updateStoreButtons(){
+  document.getElementById('btnStore40').classList.toggle('active', currentStore==='40');
+  document.getElementById('btnStore46').classList.toggle('active', currentStore==='46');
+}
+
+function render(){
+  const c = document.getElementById('content');
+  if(activeTab==='inicio') c.innerHTML = renderInicio();
+  else if(activeTab==='inventario') c.innerHTML = renderInventario();
+  else if(activeTab==='traslados') c.innerHTML = renderTraslados();
+  else if(activeTab==='ventas') c.innerHTML = renderVentas();
+  else if(activeTab==='reportes') c.innerHTML = renderReportes();
+  wireEvents();
+}
+
+/* ============ INICIO ============ */
+function renderInicio(){
+  const stockKey = 'stock' + currentStore;
+  const totalRefs = productos.length;
+  const bajoStock = productos.filter(p => (p[stockKey]||0) <= 2).length;
+  const hoy = new Date().toDateString();
+  const ventasHoy = ventas.filter(v => v.tienda===currentStore && v.tipo==='venta' && v.estado==='activa' && new Date(v.fecha).toDateString()===hoy);
+  const totalHoy = ventasHoy.reduce((s,v)=>s+v.total,0);
+
+  return `
+    <div class="stat-grid">
+      <div class="stat"><div class="num">${totalRefs}</div><div class="lbl">Referencias en catálogo</div></div>
+      <div class="stat"><div class="num" style="color:${bajoStock>0?'var(--amber)':'var(--text)'}">${bajoStock}</div><div class="lbl">Con stock bajo (Tienda ${currentStore})</div></div>
+      <div class="stat"><div class="num">${fmtMoney(totalHoy)}</div><div class="lbl">Vendido hoy — Tienda ${currentStore}</div></div>
+    </div>
+    <div class="panel">
+      <h2>Panel — Tienda ${currentStore}</h2>
+      <div class="sub">Resumen rápido de la operación de hoy</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Comprobante</th><th>Hora</th><th>Vendedor</th><th>Pago</th><th>Total</th></tr></thead>
+          <tbody>
+            ${ventasHoy.length ? ventasHoy.map(v=>`
+              <tr><td>#${v.numero}</td><td>${fmtDate(v.fecha)}</td><td>${v.vendedor}</td><td>${v.metodoPago}</td><td>${fmtMoney(v.total)}</td></tr>
+            `).join('') : '<tr><td colspan="5" class="empty">Aún no hay ventas registradas hoy en esta tienda.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+/* ============ INVENTARIO ============ */
+function renderInventario(){
+  return `
+    <div class="panel">
+      <h2>Buscar producto</h2>
+      <div class="sub">Por nombre o ID de referencia</div>
+      <input id="invSearch" placeholder="Ej: bomba de agua, radiador, código..." oninput="renderInvResults()">
+      <div id="invResults" class="table-wrap" style="margin-top:14px;">${renderInvTable(productos)}</div>
+    </div>
+
+    <div class="panel">
+      <h2>Ingresar stock</h2>
+      <div class="sub">Agrega existencias nuevas de un producto a una tienda</div>
+      <div class="row cols-2">
+        <div>
+          <label>Producto</label>
+          <select id="ingProducto">
+            <option value="">— Selecciona producto —</option>
+            ${productos.map(p=>`<option value="${p.id}">${p.nombre} (${p.id})</option>`).join('')}
+            <option value="__nuevo__">+ Crear producto nuevo</option>
+          </select>
+        </div>
+        <div>
+          <label>Tienda destino</label>
+          <select id="ingTienda">
+            <option value="40" ${currentStore==='40'?'selected':''}>Tienda 40</option>
+            <option value="46" ${currentStore==='46'?'selected':''}>Tienda 46</option>
+          </select>
+        </div>
+      </div>
+      <div id="nuevoProductoFields" style="display:none;">
+        <div class="divider"></div>
+        <div class="row cols-2">
+          <div><label>Nombre del producto</label><input id="npNombre" placeholder="Nombre"></div>
+          <div><label>Proveedor</label><input id="npProveedor" placeholder="Proveedor"></div>
+        </div>
+        <div class="row cols-4">
+          <div><label>Precio 1</label><input id="npP1" type="number" step="0.01"></div>
+          <div><label>Precio 2</label><input id="npP2" type="number" step="0.01"></div>
+          <div><label>Precio 3</label><input id="npP3" type="number" step="0.01"></div>
+          <div><label>Precio 4</label><input id="npP4" type="number" step="0.01"></div>
+        </div>
+        <div class="divider"></div>
+      </div>
+      <div class="row cols-2">
+        <div><label>Usuario</label><input id="ingUsuario" placeholder="Tu nombre"></div>
+        <div><label>Cantidad</label><input id="ingCantidad" type="number" min="1"></div>
+      </div>
+      <button class="btn btn-primary" onclick="registrarIngreso()">Guardar ingreso</button>
+    </div>
+
+    <div class="panel">
+      <h2>Importar productos en masa</h2>
+      <div class="sub">Pega una lista con una fila por producto. Columnas separadas por tabulación (como al copiar de Excel/Sheets) o por coma, en este orden:</div>
+      <div class="flag" style="margin-bottom:10px;">ID de producto (déjalo vacío para crear uno nuevo automáticamente) — Nombre — Proveedor — Precio 1 — Precio 2 — Precio 3 — Precio 4 — Stock Tienda 40 — Stock Tienda 46</div>
+      <textarea id="importText" rows="6" placeholder="Bomba de agua&#9;Marca X&#9;12.50&#9;13.00&#9;14.50&#9;15.00&#9;10&#9;4
+Radiador aluminio&#9;Marca Y&#9;80&#9;85&#9;90&#9;95&#9;3&#9;2"></textarea>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-primary" onclick="previsualizarImportacion()">Previsualizar</button>
+        <span class="flag">Si el ID coincide con uno existente, se actualiza ese producto; si no, se crea nuevo.</span>
+      </div>
+      <div id="importPreview"></div>
+    </div>
+  `;
+}
+function parseImportLine(line){
+  const sep = line.includes('\t') ? '\t' : ',';
+  const parts = line.split(sep).map(s=>s.trim());
+  // Acepta 9 columnas (con ID, vacío si es producto nuevo) u 8 columnas (sin ID, siempre nuevo)
+  let id, nombre, proveedor, precio1, precio2, precio3, precio4, stock40, stock46;
+  if(parts.length >= 9){
+    [id, nombre, proveedor, precio1, precio2, precio3, precio4, stock40, stock46] = parts;
+  } else if(parts.length === 8){
+    id = '';
+    [nombre, proveedor, precio1, precio2, precio3, precio4, stock40, stock46] = parts;
+  } else {
+    return null;
+  }
+  return {
+    id: id || null,
+    nombre: nombre || '',
+    proveedor: proveedor || '',
+    precio1: parseFloat(precio1)||0, precio2: parseFloat(precio2)||0,
+    precio3: parseFloat(precio3)||0, precio4: parseFloat(precio4)||0,
+    stock40: parseInt(stock40)||0, stock46: parseInt(stock46)||0
+  };
+}
+let importPendiente = [];
+function previsualizarImportacion(){
+  const raw = document.getElementById('importText').value.trim();
+  if(!raw){ toast('Pega al menos una fila para importar.', true); return; }
+  const lineas = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  importPendiente = [];
+  const errores = [];
+  lineas.forEach((linea, i)=>{
+    const row = parseImportLine(linea);
+    if(!row || !row.nombre){ errores.push(`Fila ${i+1}: formato incompleto, se ignoró.`); return; }
+    const existente = row.id ? productos.find(p=>p.id===row.id) : null;
+    importPendiente.push({ row, accion: existente ? 'actualizar' : 'crear' });
+  });
+  document.getElementById('importPreview').innerHTML = `
+    <div class="divider"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Acción</th><th>ID</th><th>Nombre</th><th>Proveedor</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>Stock 40</th><th>Stock 46</th></tr></thead>
+        <tbody>
+          ${importPendiente.map(x=>`
+            <tr>
+              <td><span class="badge ${x.accion==='crear'?'badge-green':'badge-amber'}">${x.accion}</span></td>
+              <td>${x.row.id || '<span class="flag">se asigna</span>'}</td>
+              <td>${x.row.nombre}</td><td>${x.row.proveedor||'—'}</td>
+              <td>${fmtMoney(x.row.precio1)}</td><td>${fmtMoney(x.row.precio2)}</td><td>${fmtMoney(x.row.precio3)}</td><td>${fmtMoney(x.row.precio4)}</td>
+              <td>${x.row.stock40}</td><td>${x.row.stock46}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    ${errores.length ? `<div class="flag" style="color:var(--red);margin-top:8px;">${errores.join('<br>')}</div>` : ''}
+    <button class="btn btn-primary" onclick="confirmarImportacion()">Confirmar e importar ${importPendiente.length} producto(s)</button>
+  `;
+}
+async function confirmarImportacion(){
+  const listaParaGuardar = [];
+  importPendiente.forEach(x=>{
+    const r = x.row;
+    if(x.accion==='actualizar'){
+      const p = productos.find(pr=>pr.id===r.id);
+      Object.assign(p, { nombre:r.nombre, proveedor:r.proveedor, precio1:r.precio1, precio2:r.precio2, precio3:r.precio3, precio4:r.precio4, stock40:r.stock40, stock46:r.stock46 });
+      listaParaGuardar.push(p);
+    } else {
+      const nuevo = { id: r.id || ('P-'+uid().toUpperCase()), nombre:r.nombre, proveedor:r.proveedor, precio1:r.precio1, precio2:r.precio2, precio3:r.precio3, precio4:r.precio4, stock40:r.stock40, stock46:r.stock46 };
+      productos.push(nuevo);
+      listaParaGuardar.push(nuevo);
+    }
+  });
+  await upsertProductos(listaParaGuardar);
+  toast(`${importPendiente.length} producto(s) importado(s) correctamente.`);
+  importPendiente = [];
+  document.getElementById('importText').value = '';
+  render();
+}
+function renderInvTable(list){
+  if(!list.length) return '<div class="empty">No hay productos registrados todavía.</div>';
+  return `
+    <table>
+      <thead><tr><th>ID</th><th>Nombre</th><th>Proveedor</th><th>Precio 1</th><th>Precio 2</th><th>Precio 3</th><th>Precio 4</th><th>Stock 40</th><th>Stock 46</th></tr></thead>
+      <tbody>
+        ${list.map(p=>`
+          <tr>
+            <td>${p.id}</td><td>${p.nombre}</td><td>${p.proveedor||'—'}</td>
+            <td>${fmtMoney(p.precio1)}</td><td>${fmtMoney(p.precio2)}</td><td>${fmtMoney(p.precio3)}</td><td>${fmtMoney(p.precio4)}</td>
+            <td><span class="badge ${p.stock40<=2?'badge-red':'badge-green'}">${p.stock40||0}</span></td>
+            <td><span class="badge ${p.stock46<=2?'badge-red':'badge-green'}">${p.stock46||0}</span></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+function renderInvResults(){
+  const q = document.getElementById('invSearch').value.trim().toLowerCase();
+  const filtered = !q ? productos : productos.filter(p => p.nombre.toLowerCase().includes(q) || p.id.toLowerCase().includes(q));
+  document.getElementById('invResults').innerHTML = renderInvTable(filtered);
+}
+async function registrarIngreso(){
+  const sel = document.getElementById('ingProducto').value;
+  const tienda = document.getElementById('ingTienda').value;
+  const usuario = document.getElementById('ingUsuario').value.trim();
+  const cantidad = parseInt(document.getElementById('ingCantidad').value);
+
+  if(!usuario || !cantidad || cantidad<=0){ toast('Completa usuario y una cantidad válida.', true); return; }
+
+  let producto;
+  if(sel === '__nuevo__'){
+    const nombre = document.getElementById('npNombre').value.trim();
+    if(!nombre){ toast('Escribe el nombre del producto nuevo.', true); return; }
+    producto = {
+      id: 'P-' + uid().toUpperCase(),
+      nombre,
+      proveedor: document.getElementById('npProveedor').value.trim(),
+      precio1: parseFloat(document.getElementById('npP1').value)||0,
+      precio2: parseFloat(document.getElementById('npP2').value)||0,
+      precio3: parseFloat(document.getElementById('npP3').value)||0,
+      precio4: parseFloat(document.getElementById('npP4').value)||0,
+      stock40: 0, stock46: 0
+    };
+    productos.push(producto);
+  } else if(sel){
+    producto = productos.find(p=>p.id===sel);
+  } else {
+    toast('Selecciona un producto o crea uno nuevo.', true); return;
+  }
+
+  producto['stock'+tienda] = (producto['stock'+tienda]||0) + cantidad;
+  await upsertProducto(producto);
+  toast(`Ingreso guardado: +${cantidad} de "${producto.nombre}" en Tienda ${tienda}.`);
+  render();
+}
+
+/* ============ TRASLADOS ============ */
+function renderTraslados(){
+  const historial = [...traslados].reverse().slice(0,40);
+  return `
+    <div class="panel">
+      <h2>Registrar traslado</h2>
+      <div class="sub">Mueve mercancía entre la Tienda 40 y la Tienda 46</div>
+      <div class="row cols-2">
+        <div>
+          <label>Producto</label>
+          <select id="trProducto">
+            <option value="">— Selecciona producto —</option>
+            ${productos.map(p=>`<option value="${p.id}">${p.nombre} (Stock 40: ${p.stock40||0} / Stock 46: ${p.stock46||0})</option>`).join('')}
+          </select>
+        </div>
+        <div><label>Usuario</label><input id="trUsuario" placeholder="Tu nombre"></div>
+      </div>
+      <div class="row cols-3">
+        <div>
+          <label>Tienda origen</label>
+          <select id="trOrigen">
+            <option value="40">Tienda 40</option>
+            <option value="46">Tienda 46</option>
+          </select>
+        </div>
+        <div>
+          <label>Tienda destino</label>
+          <select id="trDestino">
+            <option value="46">Tienda 46</option>
+            <option value="40">Tienda 40</option>
+          </select>
+        </div>
+        <div><label>Cantidad</label><input id="trCantidad" type="number" min="1"></div>
+      </div>
+      <button class="btn btn-primary" onclick="registrarTraslado()">Guardar traslado</button>
+    </div>
+
+    <div class="panel">
+      <h2>Historial de traslados</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Ruta</th><th>Usuario</th></tr></thead>
+          <tbody>
+            ${historial.length ? historial.map(t=>`
+              <tr><td>${fmtDate(t.fecha)}</td><td>${t.nombre}</td><td>${t.cantidad}</td><td>${t.origen} → ${t.destino}</td><td>${t.usuario}</td></tr>
+            `).join('') : '<tr><td colspan="5" class="empty">Todavía no se han registrado traslados.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+async function registrarTraslado(){
+  const productoId = document.getElementById('trProducto').value;
+  const usuario = document.getElementById('trUsuario').value.trim();
+  const origen = document.getElementById('trOrigen').value;
+  const destino = document.getElementById('trDestino').value;
+  const cantidad = parseInt(document.getElementById('trCantidad').value);
+
+  if(!productoId){ toast('Selecciona un producto.', true); return; }
+  if(!usuario){ toast('Escribe el nombre del usuario.', true); return; }
+  if(origen === destino){ toast('El origen y el destino deben ser distintos.', true); return; }
+  if(!cantidad || cantidad<=0){ toast('Ingresa una cantidad válida.', true); return; }
+
+  const producto = productos.find(p=>p.id===productoId);
+  const stockOrigen = producto['stock'+origen] || 0;
+  if(cantidad > stockOrigen){
+    toast(`No hay suficiente stock en Tienda ${origen} (disponible: ${stockOrigen}).`, true);
+    return;
+  }
+
+  producto['stock'+origen] -= cantidad;
+  producto['stock'+destino] = (producto['stock'+destino]||0) + cantidad;
+  await upsertProducto(producto);
+
+  const traslado = { id: uid(), fecha: new Date().toISOString(), productoId, nombre: producto.nombre, usuario, cantidad, origen, destino };
+  traslados.push(traslado);
+  await insertTraslado(traslado);
+
+  toast(`Traslado registrado: ${cantidad} × "${producto.nombre}" de Tienda ${origen} a Tienda ${destino}.`);
+  render();
+}
+
+/* ============ VENTAS ============ */
+function renderVentas(){
+  const stockKey = 'stock'+currentStore;
+  return `
+    <div class="panel">
+      <h2>Nueva venta — Tienda ${currentStore}</h2>
+      <div class="sub">Busca el producto, elige precio y cantidad, y agrégalo al carrito</div>
+      <input id="ventaSearch" placeholder="Buscar producto por nombre o ID..." oninput="renderVentaSearchResults()">
+      <div id="ventaSearchResults" class="search-results" style="display:none;"></div>
+      <div id="ventaSeleccion"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Carrito</h2>
+      <div id="cartList">${renderCart()}</div>
+    </div>
+
+    <div class="panel">
+      <h2>Cerrar venta</h2>
+      <div class="row cols-3">
+        <div><label>Vendedor</label><input id="ventaVendedor" placeholder="Tu nombre"></div>
+        <div>
+          <label>Método de pago</label>
+          <select id="ventaPago">
+            <option value="Efectivo">Efectivo</option>
+            <option value="Pago móvil">Pago móvil</option>
+            <option value="Transferencia">Transferencia</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div><label>Cédula del cliente (opcional)</label><input id="ventaCedula" placeholder="Ej: V-12345678"></div>
+      </div>
+      <button class="btn btn-primary" onclick="cerrarVenta()" ${cart.length? '' : 'disabled'}>Confirmar y cerrar venta</button>
+    </div>
+  `;
+}
+let productoSeleccionado = null;
+function renderVentaSearchResults(){
+  const q = document.getElementById('ventaSearch').value.trim().toLowerCase();
+  const box = document.getElementById('ventaSearchResults');
+  if(!q){ box.style.display='none'; box.innerHTML=''; return; }
+  const filtered = productos.filter(p => p.nombre.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)).slice(0,8);
+  box.style.display = filtered.length ? 'block' : 'none';
+  box.innerHTML = filtered.map(p=>`
+    <div class="search-row" onclick="seleccionarProductoVenta('${p.id}')">
+      <span>${p.nombre}</span><span class="flag">Stock: ${p['stock'+currentStore]||0}</span>
+    </div>
+  `).join('');
+}
+function seleccionarProductoVenta(id){
+  productoSeleccionado = productos.find(p=>p.id===id);
+  document.getElementById('ventaSearch').value = productoSeleccionado.nombre;
+  document.getElementById('ventaSearchResults').style.display='none';
+  const p = productoSeleccionado;
+  const precios = [
+    {label:'Precio 1', val:p.precio1}, {label:'Precio 2', val:p.precio2}, {label:'Precio 3', val:p.precio3}
+  ].sort((a,b)=>b.val-a.val);
+  document.getElementById('ventaSeleccion').innerHTML = `
+    <div class="divider"></div>
+    <label>Precio</label>
+    <div class="price-pick" id="pricePick">
+      ${precios.map((pr,i)=>`<button type="button" data-val="${pr.val}" onclick="pickPrice(this,${pr.val})">${fmtMoney(pr.val)}</button>`).join('')}
+      <input id="precioManual" type="number" step="0.01" placeholder="Valor manual" style="width:130px;" oninput="pickPriceManual(this.value)">
+    </div>
+    <div class="row cols-2" style="margin-top:12px;">
+      <div><label>Cantidad</label><input id="ventaCantidad" type="number" min="1" value="1"></div>
+      <div><label>Observación (opcional)</label><input id="ventaObs" placeholder="Ej: sin stock suficiente, autorizado por..."></div>
+    </div>
+    <button class="btn btn-secondary" onclick="agregarAlCarrito()">Agregar al carrito</button>
+  `;
+}
+let precioActivo = null;
+function pickPrice(btn, val){
+  document.querySelectorAll('#pricePick button').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('precioManual').value = '';
+  precioActivo = val;
+}
+function pickPriceManual(val){
+  document.querySelectorAll('#pricePick button').forEach(b=>b.classList.remove('selected'));
+  precioActivo = parseFloat(val)||0;
+}
+function agregarAlCarrito(){
+  const p = productoSeleccionado;
+  if(!p){ toast('Selecciona un producto primero.', true); return; }
+  const cantidad = parseInt(document.getElementById('ventaCantidad').value);
+  const obs = document.getElementById('ventaObs').value.trim();
+  if(!cantidad || cantidad<=0){ toast('Ingresa una cantidad válida.', true); return; }
+  if(!precioActivo){ toast('Selecciona un precio o escribe uno manual.', true); return; }
+
+  const stockDisponible = p['stock'+currentStore] || 0;
+  if(cantidad > stockDisponible && !obs){
+    toast(`Solo hay ${stockDisponible} disponibles. Agrega una observación para continuar de todos modos.`, true);
+    return;
+  }
+
+  cart.push({ productoId: p.id, nombre: p.nombre, cantidad, precioUnitario: precioActivo, observacion: obs });
+  productoSeleccionado = null; precioActivo = null;
+  document.getElementById('ventaSearch').value = '';
+  document.getElementById('ventaSeleccion').innerHTML = '';
+  render();
+  toast('Producto agregado al carrito.');
+}
+function renderCart(){
+  if(!cart.length) return '<div class="empty">El carrito está vacío. Busca un producto arriba para comenzar.</div>';
+  const total = cart.reduce((s,i)=>s+i.cantidad*i.precioUnitario,0);
+  return `
+    ${cart.map((it,idx)=>`
+      <div class="cart-item">
+        <div class="name">${it.nombre} ${it.observacion?`<div class="flag">Obs: ${it.observacion}</div>`:''}</div>
+        <div class="qty-price">${it.cantidad} × ${fmtMoney(it.precioUnitario)}</div>
+        <div>${fmtMoney(it.cantidad*it.precioUnitario)}</div>
+        <button class="btn btn-secondary btn-sm" onclick="quitarDelCarrito(${idx})">Quitar</button>
+      </div>
+    `).join('')}
+    <div class="cart-total"><span>Total</span><span>${fmtMoney(total)}</span></div>
+  `;
+}
+function quitarDelCarrito(idx){ cart.splice(idx,1); render(); }
+
+async function cerrarVenta(){
+  const vendedor = document.getElementById('ventaVendedor').value.trim();
+  const metodoPago = document.getElementById('ventaPago').value;
+  const cedulaCliente = document.getElementById('ventaCedula').value.trim();
+  if(!vendedor){ toast('Escribe el nombre del vendedor.', true); return; }
+  if(!cart.length){ toast('El carrito está vacío.', true); return; }
+
+  // Descontar stock definitivamente
+  const productosActualizados = [];
+  for(const item of cart){
+    const p = productos.find(pr=>pr.id===item.productoId);
+    p['stock'+currentStore] = Math.max(0, (p['stock'+currentStore]||0) - item.cantidad);
+    productosActualizados.push(p);
+  }
+  await upsertProductos(productosActualizados);
+
+  // Toma el número de comprobante más reciente de la base de datos antes de asignar el siguiente,
+  // para evitar que dos tiendas usen el mismo número si venden casi al mismo tiempo.
+  let numeroActual = 0;
+  try{
+    const {data} = await supabase.from('contadores').select('valor').eq('tienda', currentStore).maybeSingle();
+    numeroActual = data ? data.valor : (contadores[currentStore]||0);
+  }catch(e){ numeroActual = contadores[currentStore]||0; }
+  contadores[currentStore] = numeroActual + 1;
+  await upsertContador(currentStore, contadores[currentStore]);
+
+  const total = cart.reduce((s,i)=>s+i.cantidad*i.precioUnitario,0);
+  const venta = {
+    id: uid(), tienda: currentStore, numero: contadores[currentStore],
+    fecha: new Date().toISOString(), vendedor, metodoPago, cedulaCliente,
+    items: cart.slice(), total, estado: 'activa', tipo: 'venta'
+  };
+  ventas.push(venta);
+  await insertVenta(venta);
+
+  cart = [];
+  toast(`Venta #${venta.numero} confirmada — Tienda ${currentStore}.`);
+  mostrarComprobante(venta);
+}
+
+function mostrarComprobante(venta){
+  const modal = document.createElement('div');
+  modal.className = 'modal-bg';
+  modal.innerHTML = `
+    <div class="modal">
+      <h3>Comprobante #${venta.numero} — Tienda ${venta.tienda}</h3>
+      <div class="receipt">${generarTextoComprobante(venta)}</div>
+      <button class="btn btn-secondary" onclick="this.closest('.modal-bg').remove()">Cerrar</button>
+      <button class="btn btn-primary" onclick="imprimirComprobante('${venta.id}')">Imprimir / PDF</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+function generarTextoComprobante(venta){
+  let txt = `TIENDA ${venta.tienda}\nComprobante #${venta.numero}\nFecha: ${fmtDate(venta.fecha)}\nVendedor: ${venta.vendedor}\nPago: ${venta.metodoPago}${venta.cedulaCliente?`\nCliente (cédula): ${venta.cedulaCliente}`:''}\n\n`;
+  venta.items.forEach(it=>{ txt += `${it.nombre}\n  ${it.cantidad} x ${fmtMoney(it.precioUnitario)} = ${fmtMoney(it.cantidad*it.precioUnitario)}\n`; });
+  txt += `\nTOTAL: ${fmtMoney(venta.total)}`;
+  return txt;
+}
+function imprimirComprobante(ventaId){
+  const venta = ventas.find(v=>v.id===ventaId);
+  const w = window.open('', '_blank');
+  w.document.write(`<pre style="font-family:monospace;font-size:14px;">${generarTextoComprobante(venta)}</pre>`);
+  w.document.close();
+  w.print();
+}
+
+/* ============ REPORTES ============ */
+function renderReportes(){
+  return `
+    <div class="panel">
+      <h2>Inventario por proveedor</h2>
+      <div class="sub">Existencias actuales agrupadas por proveedor</div>
+      ${renderReporteProveedor()}
+    </div>
+    <div class="panel">
+      <h2>Buscar venta por cédula del cliente</h2>
+      <div class="sub">Busca en todas las tiendas y fechas</div>
+      <input id="cedulaSearch" placeholder="Ej: V-12345678" oninput="renderCedulaSearch()">
+      <div id="cedulaResults" style="margin-top:14px;"></div>
+    </div>
+    <div class="panel">
+      <h2>Cierre de caja — Tienda ${currentStore}</h2>
+      <div class="sub">Elige una fecha para ver el listado de ventas de esa tienda</div>
+      <input id="repFecha" type="date" value="${new Date().toISOString().slice(0,10)}" oninput="renderReporteVentas()">
+      <div id="repVentasBox" style="margin-top:14px;">${renderReporteVentasHTML(new Date().toISOString().slice(0,10))}</div>
+    </div>
+  `;
+}
+function renderReporteProveedor(){
+  const grupos = {};
+  productos.forEach(p=>{
+    const prov = p.proveedor || 'Sin proveedor';
+    if(!grupos[prov]) grupos[prov] = [];
+    grupos[prov].push(p);
+  });
+  const keys = Object.keys(grupos);
+  if(!keys.length) return '<div class="empty">Aún no hay productos registrados.</div>';
+  return keys.map(prov=>`
+    <h4 style="margin:16px 0 6px;">${prov}</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Producto</th><th>Stock 40</th><th>Stock 46</th><th>Total</th></tr></thead>
+        <tbody>
+          ${grupos[prov].map(p=>`<tr><td>${p.nombre}</td><td>${p.stock40||0}</td><td>${p.stock46||0}</td><td>${(p.stock40||0)+(p.stock46||0)}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `).join('');
+}
+function renderCedulaSearch(){
+  const q = document.getElementById('cedulaSearch').value.trim().toLowerCase();
+  const box = document.getElementById('cedulaResults');
+  if(!q){ box.innerHTML = ''; return; }
+  const encontradas = ventas.filter(v => v.cedulaCliente && v.cedulaCliente.toLowerCase().includes(q));
+  if(!encontradas.length){ box.innerHTML = '<div class="empty">No se encontraron ventas con esa cédula.</div>'; return; }
+  box.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tienda</th><th>#</th><th>Fecha</th><th>Vendedor</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          ${encontradas.map(v=>`
+            <tr>
+              <td>${v.tienda}</td><td>${v.numero}</td><td>${fmtDate(v.fecha)}</td><td>${v.vendedor}</td><td>${fmtMoney(v.total)}</td>
+              <td><span class="badge ${v.estado==='activa'?'badge-green':'badge-red'}">${v.estado}</span></td>
+              <td><button class="btn btn-secondary btn-sm" onclick="mostrarComprobante(ventas.find(x=>x.id==='${v.id}'))">Ver</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+function renderReporteVentas(){
+  const fecha = document.getElementById('repFecha').value;
+  document.getElementById('repVentasBox').innerHTML = renderReporteVentasHTML(fecha);
+}
+function renderReporteVentasHTML(fecha){
+  const delDia = ventas.filter(v => v.tienda===currentStore && new Date(v.fecha).toISOString().slice(0,10)===fecha);
+  if(!delDia.length) return '<div class="empty">No hay movimientos para esta fecha en esta tienda.</div>';
+  const totalActivas = delDia.filter(v=>v.tipo==='venta' && v.estado==='activa').reduce((s,v)=>s+v.total,0);
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Hora</th><th>Tipo</th><th>Vendedor</th><th>Pago</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          ${delDia.map(v=>`
+            <tr>
+              <td>${v.numero}</td><td>${fmtDate(v.fecha)}</td>
+              <td>${v.tipo==='venta'?'Venta':'Devolución'}</td>
+              <td>${v.vendedor}</td><td>${v.metodoPago}</td><td>${fmtMoney(v.total)}</td>
+              <td><span class="badge ${v.estado==='activa'?'badge-green':v.estado==='anulada'?'badge-red':'badge-amber'}">${v.estado}</span></td>
+              <td>
+                ${v.tipo==='venta' && v.estado==='activa' ? `
+                  <button class="btn btn-secondary btn-sm" onclick="anularVenta('${v.id}')">Anular</button>
+                  <button class="btn btn-secondary btn-sm" onclick="mostrarComprobante(ventas.find(x=>x.id==='${v.id}'))">Ver</button>
+                ` : `<button class="btn btn-secondary btn-sm" onclick="mostrarComprobante(ventas.find(x=>x.id==='${v.id}'))">Ver</button>`}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="cart-total"><span>Total del día</span><span>${fmtMoney(totalActivas)}</span></div>
+  `;
+}
+async function anularVenta(ventaId){
+  const venta = ventas.find(v=>v.id===ventaId);
+  if(!venta || venta.estado!=='activa') return;
+  if(!confirm(`¿Anular la venta #${venta.numero}? El producto regresará al depósito de Tienda ${venta.tienda}.`)) return;
+
+  const productosActualizados = [];
+  venta.items.forEach(item=>{
+    const p = productos.find(pr=>pr.id===item.productoId);
+    if(p){ p['stock'+venta.tienda] = (p['stock'+venta.tienda]||0) + item.cantidad; productosActualizados.push(p); }
+  });
+  venta.estado = 'anulada';
+  await upsertProductos(productosActualizados);
+  await updateVentaEstado(venta.id, 'anulada');
+  toast(`Venta #${venta.numero} anulada. Stock devuelto a Tienda ${venta.tienda}.`);
+  render();
+}
+
+/* ============ INIT ============ */
+function wireEvents(){
+  const sel = document.getElementById('ingProducto');
+  if(sel){
+    sel.onchange = () => {
+      document.getElementById('nuevoProductoFields').style.display = sel.value==='__nuevo__' ? 'block' : 'none';
+    };
+  }
+}
+
+function mostrarErrorFatal(mensaje){
+  document.getElementById('content').innerHTML = `
+    <div class="panel" style="border-color:var(--red);">
+      <h2 style="color:var(--red);">No se pudo iniciar la aplicación</h2>
+      <p>Copia este mensaje y envíaselo a Claude para revisarlo:</p>
+      <div class="receipt" style="color:var(--red);">${mensaje}</div>
+    </div>
+  `;
+}
+window.addEventListener('error', (e) => {
+  mostrarErrorFatal(e.message + (e.filename ? ' (' + e.filename + ':' + e.lineno + ')' : ''));
+});
+window.addEventListener('unhandledrejection', (e) => {
+  mostrarErrorFatal((e.reason && e.reason.message) ? e.reason.message : String(e.reason));
+});
+
+(async function init(){
+  try{
+    if(!supabase){
+      mostrarErrorFatal(errorInicioSupabase || 'No se pudo conectar con Supabase.');
+      return;
+    }
+    await loadAll();
+    updateStoreButtons();
+    document.querySelector('.tab-btn[data-tab="inicio"]').classList.add('active');
+    render();
+  }catch(err){
+    mostrarErrorFatal((err && err.message) ? err.message : String(err));
+  }
+})();
+</script>
+</body>
+</html>
